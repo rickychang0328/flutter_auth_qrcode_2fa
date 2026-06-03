@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter_auth_qrcode_2fa/domain/base32_util.dart';
 import 'package:flutter_auth_qrcode_2fa/domain/hash_algorithm.dart';
 import 'package:flutter_auth_qrcode_2fa/domain/otp_generator.dart';
 import 'package:flutter_auth_qrcode_2fa/domain/otp_type.dart';
@@ -101,4 +103,83 @@ class OtpAccount {
     if (action == ThirdPartyAction.copy) return;
     currentOtp = generateOtp(timeSeconds: timeSeconds);
   }
+
+  /// Android `Entry.toJSON()` field names.
+  Map<String, dynamic> toJson() {
+    final json = <String, dynamic>{
+      'secret': secretText.isNotEmpty
+          ? secretText
+          : Base32Util.encode(secret, stripPadding: true),
+      'issuer': issuer,
+      'account': account,
+      'label': label,
+      'type': type.jsonName,
+      'algorithm': algorithm.jsonName,
+      'digits': digits,
+      'tags': tags,
+      'thumbnail': 'DEFAULT',
+      'last_used': lastUsed,
+      'currentOTP': currentOtp ?? '',
+      'ishideotp': hideOtp,
+      'remainingTime': remainingTime,
+      'istag': isTop,
+    };
+    if (type == OtpType.totp || type == OtpType.steam) {
+      json['period'] = period;
+    } else if (type == OtpType.hotp) {
+      json['counter'] = counter;
+    }
+    return json;
+  }
+
+  factory OtpAccount.fromJson(Map<String, dynamic> json) {
+    final secretStr = (json['secret'] as String? ?? '').toUpperCase();
+    final account = OtpAccount(
+      type: OtpTypeExtension.fromJsonName(json['type'] as String? ?? 'TOTP'),
+      secret: Base32Util.decode(secretStr),
+      secretText: secretStr,
+      issuer: json['issuer'] as String? ?? '',
+      account: json['account'] as String? ?? '',
+      label: json['label'] as String? ?? '',
+      period: json['period'] as int? ?? OtpGenerator.totpDefaultPeriod,
+      digits: json['digits'] as int? ?? OtpGenerator.totpDefaultDigits,
+      algorithm: HashAlgorithmExtension.fromJsonName(
+        json['algorithm'] as String?,
+      ),
+      counter: (json['counter'] as num?)?.toInt() ?? 0,
+      tags: (json['tags'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      lastUsed: (json['last_used'] as num?)?.toInt() ?? 0,
+      currentOtp: json['currentOTP'] as String?,
+      hideOtp: json['ishideotp'] as bool? ?? false,
+      remainingTime:
+          (json['remainingTime'] as num?)?.toInt() ??
+          OtpGenerator.totpDefaultPeriod,
+      isTop: json['istag'] as bool? ?? false,
+    );
+    account.recomputeOtp();
+    return account;
+  }
+
+  static List<OtpAccount> listFromJsonString(String raw) {
+    final list = jsonDecode(raw) as List<dynamic>;
+    return list
+        .map((e) => OtpAccount.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static String listToJsonString(List<OtpAccount> accounts) =>
+      jsonEncode(accounts.map((a) => a.toJson()).toList());
+
+  String displayTitle() {
+    if (issuer.isNotEmpty && account.isNotEmpty) {
+      return '$issuer ($account)';
+    }
+    if (issuer.isNotEmpty) return issuer;
+    if (account.isNotEmpty) return account;
+    return label;
+  }
+
 }
