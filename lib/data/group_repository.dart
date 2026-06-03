@@ -69,4 +69,23 @@ class GroupRepository {
       await saveAll(all);
     }
   }
+
+  /// Appends [lastUsed] to each group's [GroupModel.codeLastIdList] (no-op if
+  /// already present).
+  Future<void> addLastUsedToGroups(Iterable<int> groupIds, int lastUsed) async {
+    final idSet = groupIds.toSet();
+    if (idSet.isEmpty) return;
+
+    final all = await loadAll();
+    var changed = false;
+    for (var i = 0; i < all.length; i++) {
+      if (!idSet.contains(all[i].id)) continue;
+      if (all[i].codeLastIdList.contains(lastUsed)) continue;
+      all[i] = all[i].copyWith(
+        codeLastIdList: [...all[i].codeLastIdList, lastUsed],
+      );
+      changed = true;
+    }
+    if (changed) await saveAll(all);
+  }
 }

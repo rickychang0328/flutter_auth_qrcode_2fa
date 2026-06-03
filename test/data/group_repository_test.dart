@@ -38,4 +38,10 @@ void main() {
     final missing = GroupModel(id: 999, text: 'x', codeLastIdList: [1]);
     expect(() => repo.update(missing), throwsA(isA<StateError>()));
   });
+
+  test('addLastUsedToGroups is no-op for unknown ids', () async {
+    await repo.create('aa');
+    await repo.addLastUsedToGroups([999], 42);
+    expect((await repo.loadAll()).single.codeLastIdList, isEmpty);
+  });
 }

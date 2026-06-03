@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_auth_qrcode_2fa/domain/batch_qr_codec.dart';
 import 'package:flutter_auth_qrcode_2fa/domain/otp_account.dart';
 import 'package:flutter_auth_qrcode_2fa/domain/third_party_action.dart';
+import 'package:flutter_auth_qrcode_2fa/presentation/import_group_linker.dart';
 import 'package:flutter_auth_qrcode_2fa/presentation/providers.dart';
 import 'package:flutter_auth_qrcode_2fa/presentation/widgets/duplicate_account_dialog.dart';
 
@@ -53,11 +54,13 @@ class DeepLinkHandler {
       if (action == DuplicateAction.overwrite) {
         account.lastUsed = dup.lastUsed;
         await _ref.read(accountsProvider.notifier).update(account);
+        await _linkImportedAccount(account);
       }
       return;
     }
 
     await _ref.read(accountsProvider.notifier).add(account);
+    await _linkImportedAccount(account);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('已新增帳戶')),
@@ -75,6 +78,7 @@ class DeepLinkHandler {
       final all = await repo.loadAll();
       if (repo.findDuplicate(all, account) == null) {
         await _ref.read(accountsProvider.notifier).add(account);
+        await _linkImportedAccount(account);
         added++;
       }
     }
@@ -85,5 +89,22 @@ class DeepLinkHandler {
         SnackBar(content: Text('批次匯入完成（新增 $added 筆）')),
       );
     }
+  }
+
+  Future<void> _linkImportedAccount(OtpAccount account) async {
+    if (account.lastUsed == 0) return;
+
+    final selectedGroupId = _ref.read(accountsProvider).selectedGroupId;
+    final groupRepo = await _ref.read(groupRepositoryProvider.future);
+    final groups = await groupRepo.loadAll();
+    final targetIds = resolveImportGroupLinkTargets(
+      selectedGroupId: selectedGroupId,
+      uriGroupNames: account.groupList,
+      groups: groups,
+    );
+    if (targetIds.isEmpty) return;
+
+    await groupRepo.addLastUsedToGroups(targetIds, account.lastUsed);
+    _ref.invalidate(groupsListProvider);
   }
 }
