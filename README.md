@@ -1,14 +1,33 @@
 # MustAuth Flutter (`flutter_auth_qrcode_2fa`)
 
-Flutter 移植版 MustAuth（對照 Android NOSMS / andOTP 衍生），支援 OTP 帳戶管理、QR 掃描/相簿辨識、批次分享、加密本機儲存與備份還原。
+Flutter 移植版 **MustAuth**（對照 Android NOSMS / andOTP 衍生），提供本機 TOTP / HOTP / Steam Guard 驗證碼管理、QR 掃描與相簿辨識、分組、批次分享、加密儲存與備份還原。
 
-## 規格文件
+## 功能特色（目前實作狀態）
 
-- [docs/requirements.md](docs/requirements.md) — 功能需求（FR-xx）
-- [docs/design.md](docs/design.md) — 架構、URI、加密、Deep Link（§6.2 備份、§9 Deep Link）
-- [docs/tasks.md](docs/tasks.md) — 實作任務清單
+| 類別 | 功能 |
+|------|------|
+| **OTP** | TOTP 自動刷新、HOTP/Steam 支援、一鍵複製、置頂排序 |
+| **新增帳戶** | 手動編輯、相機 QR（`mobile_scanner`）、相簿 QR、Deep Link（`otpauth` / `mustauth`） |
+| **分組** | 最多 10 組、主列表篩選、匯入時自動連結分組 |
+| **分享** | 多選匯出批次 QR（每張最多 8 筆）、分享歷史、匯出前安全驗證 |
+| **儲存** | AES-GCM `secrets.dat`、`grouplistjson`、`shareaccountlistjson` |
+| **備份** | 明文 `otp_accounts.json`、PBKDF2 加密 `.json.aes` |
+| **安全** | 指紋/臉部（`local_auth`）、背景 5 分鐘鎖、九宮格手勢 |
+| **API** | `POST /version` 檢查更新、動態 domain |
 
-## 執行方式
+尚未實作：Panic Button、背景模糊、WebView 說明頁、主列表搜尋、剪貼簿 URI 偵測等（詳見 [docs/SDD.md §3](docs/SDD.md#3-已實作功能清單)）。
+
+## 規格與設計文件
+
+| 文件 | 說明 |
+|------|------|
+| **[docs/SDD.md](docs/SDD.md)** | **軟體設計文件**（架構、類別、Mermaid 圖表） |
+| [docs/requirements.md](docs/requirements.md) | 功能需求（FR-xx） |
+| [docs/design.md](docs/design.md) | Android 對照、URI、加密、Deep Link |
+| [docs/tasks.md](docs/tasks.md) | 分階段實作任務 |
+| [docs/spec.json](docs/spec.json) | 規格元資料（language: zh-TW） |
+
+## 建置與執行
 
 ```bash
 flutter pub get
@@ -17,63 +36,76 @@ flutter run \
   --dart-define=WEB_BASE_URL=https://mustauth.com/
 ```
 
-- `API_BASE_URL`：版本檢查 API 根路徑（對應 Android `BuildConfig`）
-- `WEB_BASE_URL`：說明/隱私 WebView 基底（預留）
+| 參數 | 用途 |
+|------|------|
+| `API_BASE_URL` | 版本檢查 API 根路徑（`VersionApiClient`，對應 Android `BuildConfig`） |
+| `WEB_BASE_URL` | 說明/隱私 WebView 基底（預留，尚未實作 UI） |
 
-測試與靜態分析：
+## 測試
 
 ```bash
 flutter test
 dart analyze lib
 ```
 
+現有單元測試涵蓋：`OtpGenerator`、`OtpUriParser`、`BatchQrCodec`、`OtpAccount` JSON、`GroupRepository`、`EncryptedAccountStore`、`import_group_linker`。
+
+## 專案結構
+
+```
+lib/
+├── domain/          # OtpAccount, OtpGenerator, OtpUriParser, BatchQrCodec, GroupModel
+├── data/            # EncryptedAccountStore, repositories, BackupService, QrImageDecoder
+└── presentation/    # Riverpod, screens, DeepLinkHandler, SecurityService
+test/                # domain / data / presentation 單元測試
+docs/                # SDD, requirements, design, tasks
+android/ ios/        # 原生 QR MethodChannel、Deep Link manifest
+```
+
+## 架構概覽
+
+```mermaid
+flowchart LR
+    UI[Presentation] --> Domain[Domain OTP/URI]
+    UI --> Data[Data Store/API]
+    Domain --> Data
+```
+
+完整 **類別圖、循序圖、畫面流程圖** 見 [docs/SDD.md](docs/SDD.md#12-類別圖class-diagram)。
+
 ## 與 Android 互通性
 
 | 項目 | 說明 |
 |------|------|
-| **Keystore / `secrets.dat`** | Android 以 Keystore 包裝 `otp.key` 加密 `secrets.dat`；Flutter 使用 `flutter_secure_storage` 保存 AES 金鑰，**無法直接互換**本機資料庫檔案。請使用下方備份格式跨裝置遷移。 |
-| **明文備份** | `otp_accounts.json` — JSON 陣列，欄位與 `Entry.toJSON()` 一致（`last_used`、`istag` 等）。 |
-| **加密備份** | `otp_accounts.json.aes` — `[4B iterations BE][12B salt][AES-GCM ciphertext]`；PBKDF2-HmacSHA1，iter 1000–5000；256-bit 衍生，AES 金鑰取前 128 bit（匯入時亦嘗試 Android 全長 32-byte 金鑰）。 |
-| **批次 QR / URI** | 支援 `mustauth://` / `otpauth://` 及 `mulitpleURL` 拼字（歷史 typo，不可改）。 |
-| **手勢鎖** | Android 舊版以硬編碼 AES/ECB 儲存 `gesture_pwd_key`；Flutter 以 `shared_preferences` 儲存，**與舊版手勢密文不相容**。 |
+| **Keystore / `secrets.dat`** | Android 以 Keystore 包裝 `otp.key`；Flutter 使用 `flutter_secure_storage`，**無法直接互換**本機資料庫。請用備份格式遷移。 |
+| **明文備份** | `otp_accounts.json` — 欄位與 `Entry.toJSON()` 一致（`last_used`、`istag` 等）。 |
+| **加密備份** | `otp_accounts.json.aes` — `[4B iterations BE][12B salt][AES-GCM]`；PBKDF2-HmacSHA1。 |
+| **批次 QR / URI** | 支援 `mustauth://` / `otpauth://` 及 `mulitpleURL` 歷史拼字。 |
+| **手勢鎖** | Android 舊版硬編碼 AES/ECB；Flutter 以 SharedPreferences 儲存，**密文不相容**。 |
 
-## 已實作（原 deferred 任務）
+## 平台注意事項
 
-| 任務 | 內容 |
-|------|------|
-| **T0.3** | Android `AndroidManifest.xml`、`ios/Runner/Info.plist` 註冊 `otpauth` / `mustauth` scheme；與 `app_links` + `DeepLinkHandler` 搭配。 |
-| **T2.5** | `BackupService` / `BackupCrypto`：明文 JSON 與 `.json.aes` 匯出匯入；設定頁入口。 |
-| **T3.4** | `image_picker` 相簿 QR；原生辨識（Android ZXing / iOS Vision）經 MethodChannel；即時掃描仍用 `mobile_scanner`；錯誤訊息繁體中文。 |
-| **T8.5** | 本 README 與 spec 連結、互通限制說明。 |
+### Deep Link
 
-## 平台設定備註
-
-### Android
-
-- `AndroidManifest.xml`：`CAMERA`、`READ_MEDIA_IMAGES`（及 API≤32 的 `READ_EXTERNAL_STORAGE`）
-- Deep link：`intent-filter` VIEW + `otpauth` / `mustauth` hosts `totp`、`hotp`、`*`
-
-### iOS
-
-- `Info.plist`：`NSCameraUsageDescription`、`NSPhotoLibraryUsageDescription`
-- `CFBundleURLTypes`：`otpauth`、`mustauth` URL schemes
-- 相簿 QR 使用原生 **Vision**（`VNDetectBarcodesRequest`），需實機或模擬器；不支援 Web
+- **Android**：`AndroidManifest.xml` — `intent-filter` VIEW + `otpauth` / `mustauth`（hosts: `totp`, `hotp`, `*`）
+- **iOS**：`Info.plist` — `CFBundleURLTypes` 註冊相同 scheme
+- **Flutter**：`app_links` + `DeepLinkHandler`
 
 ### 相簿 QR 原生辨識
 
 | 平台 | 實作 |
 |------|------|
-| **Android** | ZXing `QRCodeReader` + 多尺寸重試（512→2048 等），對照 nosms `LoadingPictureActivity` |
-| **iOS** | Apple **Vision** `VNDetectBarcodesRequest`（QR symbology），無額外 CocoaPods |
-| **Flutter** | MethodChannel `com.example.flutter_auth_qrcode_2fa/qr_decode` → `decodeFromImagePath` |
+| **Android** | ZXing `QRCodeReader`（`QrImageDecodeHandler.kt`） |
+| **iOS** | Apple Vision `VNDetectBarcodesRequest`（`QrImageDecodePlugin.swift`） |
+| **Flutter** | MethodChannel `com.example.flutter_auth_qrcode_2fa/qr_decode`；失敗時 fallback `mobile_scanner.analyzeImage` |
+| **Web** | 不支援相簿 QR |
 
-單元測試以 mock channel 驗證 Dart 層；`test/assets/qrcodetest1.png` 之實際解碼請在 Android/iOS 整合測試或實機驗證。
+即時相機掃描仍使用 `mobile_scanner`（`QrScanScreen`）。
 
-## 專案結構（摘要）
+### 權限
 
-- `lib/domain/` — `OtpAccount`、`OtpUriParser`、`BatchQrCodec`
-- `lib/data/` — `EncryptedAccountStore`、`BackupService`、`QrImageDecoder`
-- `lib/presentation/` — Riverpod UI、`DeepLinkHandler`、設定與備份操作
+- Android：`CAMERA`、`READ_MEDIA_IMAGES`（API≤32 另需 `READ_EXTERNAL_STORAGE`）
+- iOS：`NSCameraUsageDescription`、`NSPhotoLibraryUsageDescription`
 
 ## 參考 Android 原始碼
 

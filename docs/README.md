@@ -6,6 +6,7 @@
 
 | 檔案 | 用途 |
 |------|------|
+| **[SDD.md](./SDD.md)** | **Flutter 實作軟體設計文件**（架構、類別、Mermaid 圖表、實作狀態） |
 | [spec.json](./spec.json) | 規格元資料、版本、相容目標 |
 | [requirements.md](./requirements.md) | 功能與非功能需求、驗收標準 |
 | [design.md](./design.md) | 架構、資料契約、演算法、API、加密、Deep Link |
