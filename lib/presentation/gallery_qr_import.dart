@@ -40,7 +40,5 @@ Future<bool> pickAndImportQrFromGallery(
       );
     }
     return false;
-  } finally {
-    decoder.dispose();
   }
 }

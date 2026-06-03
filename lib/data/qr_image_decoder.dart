@@ -1,34 +1,56 @@
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
-/// Gallery QR decode — mirrors `LoadingPictureActivity` + ZXing flow.
+/// Gallery / static image QR decode via native ZXing (Android) or Vision (iOS).
 class QrImageDecoder {
-  QrImageDecoder({MobileScannerController? controller})
-      : _controller = controller ?? MobileScannerController();
+  QrImageDecoder({MethodChannel? channel})
+      : _channel = channel ?? const MethodChannel(_channelName);
 
-  final MobileScannerController _controller;
+  static const _channelName = 'com.example.flutter_auth_qrcode_2fa/qr_decode';
+  static const _methodDecodeFromImagePath = 'decodeFromImagePath';
 
-  /// Reads the first QR/barcode payload from an image file path.
+  final MethodChannel _channel;
+
+  /// Reads the first QR payload from an image file path (or `content://` on Android).
   Future<String> decodeFromImagePath(String path) async {
-    final capture = await _controller.analyzeImage(path);
-    final value = extractFirstRawValue(capture);
-    if (value == null || value.isEmpty) {
-      throw const QrImageDecodeException('無法從圖片中辨識 QR 碼');
+    if (kIsWeb) {
+      throw const QrImageDecodeException('相簿辨識不支援 Web 平台');
     }
-    return value;
+
+    try {
+      final result = await _channel.invokeMethod<Map<Object?, Object?>>(
+        _methodDecodeFromImagePath,
+        <String, Object?>{'path': path},
+      );
+      final map = Map<String, dynamic>.from(result ?? {});
+      final success = map['success'] == true;
+      final payload = map['payload'] as String?;
+      if (success && payload != null && payload.trim().isNotEmpty) {
+        return payload.trim();
+      }
+      throw const QrImageDecodeException('無法從圖片中辨識 QR 碼');
+    } on PlatformException catch (e) {
+      throw QrImageDecodeException(_messageFromPlatformException(e));
+    } on MissingPluginException {
+      throw const QrImageDecodeException('相簿辨識僅支援 Android 與 iOS');
+    }
   }
 
-  void dispose() => _controller.dispose();
-
-  /// Pure helper for unit tests and shared scan/deep-link pipeline.
-  static String? extractFirstRawValue(BarcodeCapture? capture) {
-    if (capture == null) return null;
-    for (final barcode in capture.barcodes) {
-      final raw = barcode.rawValue;
-      if (raw != null && raw.trim().isNotEmpty) {
-        return raw.trim();
-      }
+  static String _messageFromPlatformException(PlatformException e) {
+    final message = e.message?.trim();
+    if (message != null && message.isNotEmpty) {
+      return message;
     }
-    return null;
+    switch (e.code) {
+      case 'NOT_FOUND':
+        return '無法從圖片中辨識 QR 碼';
+      case 'INVALID_PATH':
+        return '無法讀取圖片';
+      case 'UNSUPPORTED':
+        return '此平台不支援相簿 QR 辨識';
+      default:
+        return 'QR 辨識失敗';
+    }
   }
 }
 

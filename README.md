@@ -43,7 +43,7 @@ dart analyze lib
 |------|------|
 | **T0.3** | Android `AndroidManifest.xml`、`ios/Runner/Info.plist` 註冊 `otpauth` / `mustauth` scheme；與 `app_links` + `DeepLinkHandler` 搭配。 |
 | **T2.5** | `BackupService` / `BackupCrypto`：明文 JSON 與 `.json.aes` 匯出匯入；設定頁入口。 |
-| **T3.4** | `image_picker` + `mobile_scanner` `analyzeImage` 相簿 QR；帳戶列表與掃描頁入口；錯誤訊息繁體中文。 |
+| **T3.4** | `image_picker` 相簿 QR；原生辨識（Android ZXing / iOS Vision）經 MethodChannel；即時掃描仍用 `mobile_scanner`；錯誤訊息繁體中文。 |
 | **T8.5** | 本 README 與 spec 連結、互通限制說明。 |
 
 ## 平台設定備註
@@ -57,7 +57,17 @@ dart analyze lib
 
 - `Info.plist`：`NSCameraUsageDescription`、`NSPhotoLibraryUsageDescription`
 - `CFBundleURLTypes`：`otpauth`、`mustauth` URL schemes
-- 相簿 QR 需實機或模擬器測試（`analyzeImage` 不支援 Web）
+- 相簿 QR 使用原生 **Vision**（`VNDetectBarcodesRequest`），需實機或模擬器；不支援 Web
+
+### 相簿 QR 原生辨識
+
+| 平台 | 實作 |
+|------|------|
+| **Android** | ZXing `QRCodeReader` + 多尺寸重試（512→2048 等），對照 nosms `LoadingPictureActivity` |
+| **iOS** | Apple **Vision** `VNDetectBarcodesRequest`（QR symbology），無額外 CocoaPods |
+| **Flutter** | MethodChannel `com.example.flutter_auth_qrcode_2fa/qr_decode` → `decodeFromImagePath` |
+
+單元測試以 mock channel 驗證 Dart 層；`test/assets/qrcodetest1.png` 之實際解碼請在 Android/iOS 整合測試或實機驗證。
 
 ## 專案結構（摘要）
 
