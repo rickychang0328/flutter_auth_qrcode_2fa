@@ -1,0 +1,29 @@
+{
+  "name": "nosms-flutter-port",
+  "title": "MustAuth / NOSMS — Flutter 移植規格",
+  "description": "自 Android 專案 nosms 萃取之 Spec-Driven Development 文件，供 Flutter 專案實作功能對等與資料互通。",
+  "language": "zh-TW",
+  "sourceProject": {
+    "platform": "Android",
+    "package": "com.xtxgcsydsu.nosms",
+    "versionName": "1.3.0",
+    "minSdk": 21,
+    "targetSdk": 28
+  },
+  "targetProject": {
+    "platform": "Flutter",
+    "compatibilityGoal": "otpauth/mustauth URI、secrets.dat 加密格式、批次 QR 匯出格式、分組與 API 行為與 Android 版一致"
+  },
+  "phases": {
+    "requirements": "approved",
+    "design": "approved",
+    "tasks": "draft"
+  },
+  "createdAt": "2026-06-03",
+  "references": [
+    "app/src/main/java/com/xtxgcsydsu/nosms/database/Entry.java",
+    "app/src/main/java/com/xtxgcsydsu/nosms/utilities/TokenCalculator.java",
+    "app/src/main/java/com/xtxgcsydsu/nosms/utilities/DatabaseHelper.java",
+    "app/src/main/AndroidManifest.xml"
+  ]
+}
