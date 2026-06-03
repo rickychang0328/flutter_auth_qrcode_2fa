@@ -11,7 +11,7 @@ class QrImageDecoder {
     MobileScannerController? scanner,
     QrImageAnalyzeFn? analyzeImage,
   })  : _channel = channel ?? const MethodChannel(_channelName),
-        _scanner = scanner ?? (analyzeImage == null ? MobileScannerController() : null),
+        _scanner = scanner,
         _analyzeImage = analyzeImage;
 
   static const _channelName = 'com.example.flutter_auth_qrcode_2fa/qr_decode';
@@ -27,6 +27,10 @@ class QrImageDecoder {
       throw const QrImageDecodeException('相簿辨識不支援 Web 平台');
     }
 
+    if (path.trim().isEmpty) {
+      throw const QrImageDecodeException('無法讀取圖片：路徑為空');
+    }
+
     try {
       final capture = await _analyzeImageAtPath(path);
       final payload = extractFirstRawValue(capture);
@@ -40,6 +44,7 @@ class QrImageDecoder {
     return _decodeFromNative(path);
   }
 
+  /// Retained for backward compatibility. Disposes the injected scanner if any.
   void dispose() => _scanner?.dispose();
 
   Future<BarcodeCapture?> _analyzeImageAtPath(String path) async {
@@ -48,10 +53,17 @@ class QrImageDecoder {
       return analyze(path);
     }
     final scanner = _scanner;
-    if (scanner == null) {
-      return null;
+    if (scanner != null) {
+      return scanner.analyzeImage(path);
     }
-    return scanner.analyzeImage(path);
+
+    // No scanner was passed; create a temporary controller, use it, and immediately dispose it.
+    final tempScanner = MobileScannerController();
+    try {
+      return await tempScanner.analyzeImage(path);
+    } finally {
+      await tempScanner.dispose();
+    }
   }
 
   /// Pure helper for unit tests and shared scan/deep-link pipeline.
@@ -68,13 +80,12 @@ class QrImageDecoder {
 
   Future<String> _decodeFromNative(String path) async {
     try {
-      final result = await _channel.invokeMethod<Map<Object?, Object?>>(
+      final result = await _channel.invokeMapMethod<String, dynamic>(
         _methodDecodeFromImagePath,
         <String, Object?>{'path': path},
       );
-      final map = Map<String, dynamic>.from(result ?? {});
-      final success = map['success'] == true;
-      final payload = map['payload'] as String?;
+      final success = result?['success'] == true;
+      final payload = result?['payload'] as String?;
       if (success && payload != null && payload.trim().isNotEmpty) {
         return payload.trim();
       }
