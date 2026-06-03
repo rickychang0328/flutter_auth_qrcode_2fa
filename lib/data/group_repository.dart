@@ -24,7 +24,10 @@ class GroupRepository {
     await _prefs.setGrouplistJson(encoded);
   }
 
-  Future<GroupModel> create(String text) async {
+  Future<GroupModel> create(
+    String text, {
+    List<int>? codeLastIdList,
+  }) async {
     final all = await loadAll();
     if (all.length >= maxGroups) {
       throw StateError('最多只能建立 $maxGroups 個分組');
@@ -32,7 +35,11 @@ class GroupRepository {
     final nextId = all.isEmpty
         ? 1
         : all.map((g) => g.id).reduce((a, b) => a > b ? a : b) + 1;
-    final group = GroupModel(id: nextId, text: text);
+    final group = GroupModel(
+      id: nextId,
+      text: text,
+      codeLastIdList: codeLastIdList,
+    );
     all.add(group);
     await saveAll(all);
     return group;
@@ -41,10 +48,11 @@ class GroupRepository {
   Future<void> update(GroupModel group) async {
     final all = await loadAll();
     final idx = all.indexWhere((g) => g.id == group.id);
-    if (idx >= 0) {
-      all[idx] = group;
-      await saveAll(all);
+    if (idx < 0) {
+      throw StateError('找不到分組，請重新整理後再試');
     }
+    all[idx] = group;
+    await saveAll(all);
   }
 
   Future<void> delete(int id) async {

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_auth_qrcode_2fa/data/group_repository.dart';
+import 'package:flutter_auth_qrcode_2fa/domain/group_model.dart';
 import 'package:flutter_auth_qrcode_2fa/presentation/providers.dart';
+import 'package:flutter_auth_qrcode_2fa/presentation/screens/group_edit_screen.dart';
 
 class GroupsScreen extends ConsumerStatefulWidget {
   const GroupsScreen({super.key});
@@ -18,7 +20,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('分組管理')),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _createGroup(context),
+        onPressed: () => _openEdit(context, existing: null),
         child: const Icon(Icons.add),
       ),
       body: groupsAsync.when(
@@ -38,6 +40,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
                 ),
                 title: Text(g.text),
                 subtitle: Text('${g.codeLastIdList.length} 個帳戶'),
+                onTap: () => _openEdit(context, existing: g),
                 trailing: PopupMenuButton<String>(
                   onSelected: (v) async {
                     final repo =
@@ -62,44 +65,23 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('$e')),
+        error: (e, _) => Center(child: Text('載入分組失敗：$e')),
       ),
     );
   }
 
-  Future<void> _createGroup(BuildContext context) async {
-    final controller = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('新增分組'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: '分組名稱'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('建立'),
-          ),
-        ],
+  Future<void> _openEdit(
+    BuildContext context, {
+    GroupModel? existing,
+  }) async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GroupEditScreen(existing: existing),
       ),
     );
-    if (name == null || name.isEmpty) return;
-    try {
-      final repo = await ref.read(groupRepositoryProvider.future);
-      await repo.create(name);
+    if (changed == true) {
       ref.invalidate(groupsListProvider);
-    } on StateError catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
-      }
     }
   }
 }
