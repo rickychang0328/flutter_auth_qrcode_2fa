@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_auth_qrcode_2fa/presentation/providers.dart';
 import 'package:flutter_auth_qrcode_2fa/presentation/screens/pattern_setup_screen.dart';
 import 'package:flutter_auth_qrcode_2fa/presentation/version_check.dart';
+import 'package:flutter_auth_qrcode_2fa/presentation/widgets/backup_actions.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -61,6 +62,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             title: const Text('檢查版本更新'),
             subtitle: Text('目前版本 $_version'),
             onTap: () => checkAppVersion(context, ref),
+          ),
+          const Divider(),
+          const ListTile(
+            title: Text('備份與還原'),
+            subtitle: Text('otp_accounts.json / .json.aes'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.upload_file),
+            title: const Text('匯出明文備份'),
+            onTap: () => exportPlainBackup(context, ref),
+          ),
+          ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: const Text('匯出加密備份'),
+            onTap: () => exportEncryptedBackup(context, ref),
+          ),
+          ListTile(
+            leading: const Icon(Icons.download),
+            title: const Text('匯入明文備份'),
+            onTap: () => importPlainBackup(context, ref),
+          ),
+          ListTile(
+            leading: const Icon(Icons.download_for_offline),
+            title: const Text('匯入加密備份'),
+            onTap: () => importEncryptedBackup(context, ref),
           ),
         ],
       ),

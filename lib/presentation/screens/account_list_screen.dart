@@ -4,6 +4,7 @@ import 'package:flutter_auth_qrcode_2fa/domain/otp_account.dart';
 import 'package:flutter_auth_qrcode_2fa/presentation/providers.dart';
 import 'package:flutter_auth_qrcode_2fa/presentation/screens/account_edit_screen.dart';
 import 'package:flutter_auth_qrcode_2fa/presentation/screens/groups_screen.dart';
+import 'package:flutter_auth_qrcode_2fa/presentation/gallery_qr_import.dart';
 import 'package:flutter_auth_qrcode_2fa/presentation/screens/qr_scan_screen.dart';
 import 'package:flutter_auth_qrcode_2fa/presentation/screens/settings_screen.dart';
 import 'package:flutter_auth_qrcode_2fa/presentation/screens/share_select_screen.dart';
@@ -38,6 +39,11 @@ class AccountListScreen extends ConsumerWidget {
                 builder: (_) => const ShareSelectScreen(),
               ),
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.photo_library_outlined),
+            tooltip: '相簿 QR',
+            onPressed: () => pickAndImportQrFromGallery(context, ref),
           ),
           IconButton(
             icon: const Icon(Icons.settings),

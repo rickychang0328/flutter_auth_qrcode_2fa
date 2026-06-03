@@ -122,6 +122,19 @@ class AccountsNotifier extends StateNotifier<AccountsState> {
     await load();
   }
 
+  Future<void> replaceAll(List<OtpAccount> accounts) async {
+    final base = DateTime.now().microsecondsSinceEpoch;
+    for (var i = 0; i < accounts.length; i++) {
+      final a = accounts[i];
+      if (a.lastUsed == 0) {
+        a.lastUsed = base + i;
+      }
+      a.recomputeOtp();
+    }
+    await _repo.saveAll(accounts);
+    await load();
+  }
+
   Future<void> togglePin(OtpAccount account) async {
     account.isTop = !account.isTop;
     await _repo.update(account);

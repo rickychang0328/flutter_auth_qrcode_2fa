@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_auth_qrcode_2fa/presentation/gallery_qr_import.dart';
 import 'package:flutter_auth_qrcode_2fa/presentation/providers.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -22,6 +23,11 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
     if (mounted) Navigator.pop(context);
   }
 
+  Future<void> _pickFromGallery() async {
+    final ok = await pickAndImportQrFromGallery(context, ref);
+    if (ok && mounted) Navigator.pop(context);
+  }
+
   @override
   void dispose() {
     _manualController.dispose();
@@ -31,7 +37,16 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('掃描 QR')),
+      appBar: AppBar(
+        title: const Text('掃描 QR'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.photo_library_outlined),
+            tooltip: '從相簿辨識 QR',
+            onPressed: _pickFromGallery,
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
