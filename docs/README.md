@@ -25,8 +25,3 @@
 - 批次 QR：`mustauth://mulitpleshare/...&mulitpleURL=...`（每 QR 最多 8 筆）
 - 帳戶 JSON 欄位名：見 `design.md` §2.2
 - 本機 DB：`secrets.dat` = AES-GCM(JSON 陣列)
-
-## 原始專案
-
-- Package：`com.xtxgcsydsu.nosms`
-- versionName：`1.3.0`（見 `app/build.gradle`）
