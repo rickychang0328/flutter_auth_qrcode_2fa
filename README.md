@@ -106,7 +106,3 @@ flowchart LR
 
 - Android：`CAMERA`、`READ_MEDIA_IMAGES`（API≤32 另需 `READ_EXTERNAL_STORAGE`）
 - iOS：`NSCameraUsageDescription`、`NSPhotoLibraryUsageDescription`
-
-## 參考 Android 原始碼
-
-路徑：`/Users/ricky.chang/Documents/android_prog/nosms/`（`BackupHelper`、`LoadingPictureActivity`、`AndroidManifest` deep links）
