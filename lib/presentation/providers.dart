@@ -159,8 +159,12 @@ class AccountsNotifier extends StateNotifier<AccountsState> {
       }
     }
     if (group == null) return state.accounts;
-    return state.accounts
-        .where((a) => group!.codeLastIdList.contains(a.lastUsed))
+    final byLastUsed = {
+      for (final a in state.accounts) a.lastUsed: a,
+    };
+    return group.codeLastIdList
+        .map((id) => byLastUsed[id])
+        .whereType<OtpAccount>()
         .toList();
   }
 }
@@ -173,9 +177,14 @@ final accountsProvider =
 final groupsListProvider = FutureProvider<List<GroupModel>>((ref) async {
   final repo = await ref.watch(groupRepositoryProvider.future);
   final groups = await repo.loadAll();
-  groups.sort((a, b) {
-    if (a.pinned != b.pinned) return a.pinned ? -1 : 1;
-    return a.id.compareTo(b.id);
-  });
-  return groups;
+  final pinned = <GroupModel>[];
+  final unpinned = <GroupModel>[];
+  for (final g in groups) {
+    if (g.pinned) {
+      pinned.add(g);
+    } else {
+      unpinned.add(g);
+    }
+  }
+  return [...pinned, ...unpinned];
 });

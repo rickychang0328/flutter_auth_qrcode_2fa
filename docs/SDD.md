@@ -105,7 +105,7 @@ flowchart TB
 | 任務 | 狀態 | 說明 |
 |------|------|------|
 | T4.1–T4.3 | ✅ | `GroupRepository`、`grouplistjson`、主列表 FilterChip 篩選 |
-| T4.2 | ⚠️ 部分 | 釘選已實作；**拖曳排序**尚未實作 |
+| T4.2 | ✅ | 分組 CRUD、釘選、`ReorderableListView` 拖曳排序（釘選置頂、區段內手動順序） |
 | T4.4 | ✅ | 上限 10 組（`GroupRepository.maxGroups`） |
 
 ### Phase 5：分享 / 批次 QR

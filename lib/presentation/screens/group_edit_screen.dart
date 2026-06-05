@@ -58,8 +58,11 @@ class _GroupEditScreenState extends ConsumerState<GroupEditScreen> {
       _nameValid && _draft.codeLastIdList.isNotEmpty;
 
   List<OtpAccount> _accountsInGroup(List<OtpAccount> all) {
-    final ids = _draft.codeLastIdList.toSet();
-    return all.where((a) => ids.contains(a.lastUsed)).toList();
+    final byLastUsed = {for (final a in all) a.lastUsed: a};
+    return _draft.codeLastIdList
+        .map((id) => byLastUsed[id])
+        .whereType<OtpAccount>()
+        .toList();
   }
 
   Future<void> _openAddCode() async {
@@ -84,6 +87,33 @@ class _GroupEditScreenState extends ConsumerState<GroupEditScreen> {
             _draft.codeLastIdList.where((id) => id != lastUsed).toList(),
       );
     });
+    if (!widget.isCreate) {
+      _persistDraftQuietly();
+    }
+  }
+
+  void _onAccountReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) newIndex--;
+      final ids = List<int>.from(_draft.codeLastIdList);
+      final id = ids.removeAt(oldIndex);
+      ids.insert(newIndex, id);
+      _draft = _draft.copyWith(codeLastIdList: ids);
+    });
+    if (!widget.isCreate) {
+      _persistDraftQuietly();
+    }
+  }
+
+  Future<void> _persistDraftQuietly() async {
+    if (!_nameValid || _draft.codeLastIdList.isEmpty) return;
+    try {
+      final repo = await ref.read(groupRepositoryProvider.future);
+      await repo.update(_draft);
+      ref.invalidate(groupsListProvider);
+    } catch (_) {
+      // User can still tap 儲存 to retry.
+    }
   }
 
   Future<void> _save() async {
@@ -170,18 +200,47 @@ class _GroupEditScreenState extends ConsumerState<GroupEditScreen> {
               padding: EdgeInsets.symmetric(vertical: 24),
               child: Center(child: Text('尚未加入驗證碼')),
             )
-          else
-            ...inGroup.map(
-              (a) => ListTile(
-                title: Text(a.displayTitle()),
-                subtitle: Text(a.account),
-                trailing: IconButton(
-                  icon: const Icon(Icons.remove_circle_outline),
-                  tooltip: '移出分組',
-                  onPressed: () => _removeFromGroup(a.lastUsed),
-                ),
+          else ...[
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text(
+                '長按右側拖曳圖示可調整驗證碼順序',
+                style: TextStyle(color: Colors.grey),
               ),
             ),
+            ReorderableListView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              onReorder: _onAccountReorder,
+              children: [
+                for (var i = 0; i < inGroup.length; i++)
+                  ListTile(
+                    key: ValueKey(inGroup[i].lastUsed),
+                    title: Text(inGroup[i].displayTitle()),
+                    subtitle: Text(inGroup[i].account),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline),
+                          tooltip: '移出分組',
+                          onPressed: () =>
+                              _removeFromGroup(inGroup[i].lastUsed),
+                        ),
+                        ReorderableDragStartListener(
+                          index: i,
+                          child: const Tooltip(
+                            message: '拖曳排序',
+                            child: Icon(Icons.drag_handle),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );

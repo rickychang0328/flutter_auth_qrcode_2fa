@@ -70,6 +70,9 @@ class GroupRepository {
     }
   }
 
+  /// Persists [groups] in list order (used after drag reorder).
+  Future<void> reorderAll(List<GroupModel> groups) => saveAll(groups);
+
   /// Appends [lastUsed] to each group's [GroupModel.codeLastIdList] (no-op if
   /// already present).
   Future<void> addLastUsedToGroups(Iterable<int> groupIds, int lastUsed) async {

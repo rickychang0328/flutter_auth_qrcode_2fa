@@ -44,4 +44,23 @@ void main() {
     await repo.addLastUsedToGroups([999], 42);
     expect((await repo.loadAll()).single.codeLastIdList, isEmpty);
   });
+
+  test('reorderAll persists group list order in grouplistjson', () async {
+    await repo.create('A');
+    await repo.create('B');
+    await repo.create('C');
+    final all = await repo.loadAll();
+    await repo.reorderAll([all[2], all[0], all[1]]);
+
+    final reloaded = await repo.loadAll();
+    expect(reloaded.map((g) => g.text), ['C', 'A', 'B']);
+  });
+
+  test('update persists reordered codeLastIdList', () async {
+    final g = await repo.create('工作', codeLastIdList: [10, 20, 30]);
+    await repo.update(g.copyWith(codeLastIdList: [30, 10, 20]));
+
+    final reloaded = await repo.loadAll().then((l) => l.single);
+    expect(reloaded.codeLastIdList, [30, 10, 20]);
+  });
 }
